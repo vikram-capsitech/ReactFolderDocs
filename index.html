@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide to React Project Structures</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutral -->
+    <!-- Application Structure Plan: A tab-based SPA. A main navigation bar allows users to switch between "Small," "Mid-size," and "Large" project views. Each view presents a two-column layout: a summary (Use Case, Structure) on the left and scrollable deep-dive explanations on the right. A final, globally-relevant "Best Practices" section is at the bottom. A new "Project Structure Recommender" section is added at the top of the main content area, allowing users to get AI-powered recommendations. "Explain Code" buttons are added next to code snippets, leveraging the Gemini API for detailed explanations. This structure was chosen to facilitate easy comparison between the archetypes, which is a primary goal of the source document, and to break down dense information into manageable, user-selectable sections for better usability, now augmented with AI-driven insights. -->
+    <!-- Visualization & Content Choices: Report Info: Project Structures (S, M, L) -> Goal: Compare & Inform -> Viz/Presentation: Interactive Tabbed Navigation -> Interaction: JS-powered view switching -> Justification: Intuitive pattern for comparing distinct content sets. | Report Info: File structure diagrams -> Goal: Organize & Inform -> Viz/Presentation: HTML/CSS styled file tree -> Interaction: Static visual -> Justification: Clearer and more engaging than plain text, uses HTML for visuals. | Report Info: Code Examples -> Goal: Inform & Enable -> Viz/Presentation: Styled `<pre>` blocks -> Interaction: JS-powered "Copy to Clipboard" button AND "Explain Code" button (Gemini API) -> Justification: Improves usability for developers by allowing code copying and AI-powered understanding. | Report Info: General Best Practices -> Goal: Inform -> Viz/Presentation: Simple list format -> Interaction: None -> Justification: Clear and direct presentation for guidelines. | Report Info: Project Description -> Goal: Recommend Structure -> Viz/Presentation: Text input + AI-generated text output -> Interaction: User input, button click (Gemini API) -> Justification: Provides personalized guidance based on user needs. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8;
+            color: #4B4B4B;
+        }
+        .nav-button {
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        .nav-button.active {
+            color: #D97706; /* amber-600 */
+            border-bottom-color: #D97706;
+        }
+        .nav-button:hover {
+            background-color: #FEF3C7; /* amber-100 */
+        }
+        h1, h2, h3 {
+            font-weight: 700;
+        }
+        h4 {
+            font-weight: 600;
+            color: #1F2937; /* gray-800 */
+        }
+        pre {
+            font-family: 'Fira Code', monospace;
+            background-color: #F3F4F6; /* gray-100 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            position: relative;
+        }
+        code {
+           color: #111827; /* gray-900 */
+        }
+        .copy-btn, .explain-btn {
+            position: absolute;
+            top: 0.5rem;
+            background-color: #E5E7EB; /* gray-200 */
+            color: #4B5563; /* gray-600 */
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .copy-btn {
+            right: 0.5rem;
+        }
+        .explain-btn {
+            right: 4.5rem; /* Adjust based on copy button width */
+        }
+        .copy-btn:hover, .explain-btn:hover {
+            background-color: #D1D5DB; /* gray-300 */
+        }
+        .file-tree {
+            background-color: #ffffff;
+            border: 1px solid #E5E7EB;
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        .file-tree span {
+            display: block;
+        }
+        .file-tree .folder {
+            font-weight: 500;
+        }
+        .file-tree .file {
+            margin-left: 1.5rem;
+            color: #6B7280; /* gray-500 */
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: #FDFBF8;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .close-modal-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #4B4B4B;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #D97706;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header and Introduction -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800">React Project Structures</h1>
+            <p class="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">An interactive guide to choosing the right architecture for your application. Select a project size below to explore its structure and best practices.</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="flex justify-center border-b border-gray-200 mb-12">
+            <button id="nav-small" class="nav-button active text-lg font-semibold py-4 px-6" data-target="small">Small Project</button>
+            <button id="nav-mid" class="nav-button text-lg font-semibold py-4 px-6" data-target="mid">Mid-size Project</button>
+            <button id="nav-large" class="nav-button text-lg font-semibold py-4 px-6" data-target="large">Large Project</button>
+        </nav>
+
+        <!-- Project Structure Recommender -->
+        <section class="mb-12 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">✨ Project Structure Recommender</h2>
+            <p class="text-gray-700 mb-4">Describe your project briefly, and I'll recommend the most suitable React project structure from this guide.</p>
+            <textarea id="project-description-input" class="w-full p-3 border border-gray-300 rounded-md focus:ring-amber-500 focus:border-amber-500 mb-4" rows="4" placeholder="e.g., A personal blog with a few static pages, an e-commerce platform for a startup, a large enterprise dashboard with many features."></textarea>
+            <button id="recommend-structure-btn" class="bg-amber-600 text-white font-semibold py-2 px-6 rounded-md hover:bg-amber-700 transition">Get Recommendation</button>
+            <div id="recommendation-output" class="mt-4 p-4 bg-gray-50 rounded-md border border-gray-200 text-gray-800 hidden"></div>
+        </section>
+
+        <!-- Dynamic Content Area -->
+        <main>
+            <!-- Small Project Content -->
+            <section id="content-small" class="content-section">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <aside class="lg:col-span-1 space-y-6">
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">✅ Use Case</h3>
+                            <ul class="list-disc list-inside space-y-2 text-gray-700 bg-white p-4 rounded-lg border border-gray-200">
+                                <li>Prototypes and Proof-of-Concepts</li>
+                                <li>Personal Projects & Portfolios</li>
+                                <li>Learning React Fundamentals</li>
+                                <li>Apps with limited routes & functionality</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">📂 Structure</h3>
+                            <div class="file-tree">
+                                <span class="folder">public/</span>
+                                <span class="file">📄 index.html</span>
+                                <span class="file">📄 favicon.ico</span>
+                                <span class="folder">src/</span>
+                                <span class="file folder">assets/</span>
+                                <span class="file folder">components/</span>
+                                <span class="file folder">pages/</span>
+                                <span class="file">📄 App.js</span>
+                                <span class="file">📄 index.js</span>
+                                <span class="folder">package.json</span>
+                            </div>
+                        </div>
+                    </aside>
+                    <div class="lg:col-span-2 space-y-8">
+                        <h3 class="text-3xl font-bold text-gray-800">📝 Detailed Explanation</h3>
+                        <div>
+                            <h4 class="text-xl mb-2">public/</h4>
+                            <p>This directory holds static assets directly served by the web server without being processed by the build pipeline. It contains the main `index.html` file that your React app mounts to.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">src/assets/</h4>
+                            <p>Centralizes non-JavaScript files like images, fonts, and global CSS that are imported and used within your React components. This allows the build tool to optimize and bundle them.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">src/components/</h4>
+                            <p>Houses small, reusable UI elements (e.g., `Button`, `Card`, `Header`) that are independent of specific pages or business logic. They are designed to be generic and used across the application.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">src/pages/</h4>
+                            <p>Contains components that represent entire views or "pages" of your application, like `HomePage` or `AboutPage`. Each file typically corresponds to a distinct route.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">src/App.js</h4>
+                            <p>The main application component. In a small project, this file often handles the overall layout and sets up basic routing for the application using a library like `react-router-dom`.</p>
+                            <pre><code>// src/App.js
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import HomePage from './pages/HomePage';
+import AboutPage from './pages/AboutPage';
+import Header from './components/Header';
+
+function App() {
+  return (
+    &lt;BrowserRouter&gt;
+      &lt;Header /&gt;
+      &lt;main&gt;
+        &lt;Routes&gt;
+          &lt;Route path="/" element={&lt;HomePage /&gt;} /&gt;
+          &lt;Route path="/about" element={&lt;AboutPage /&gt;} /&gt;
+        &lt;/Routes&gt;
+      &lt;/main&gt;
+    &lt;/BrowserRouter&gt;
+  );
+}
+
+export default App;</code></pre>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">src/index.js</h4>
+                            <p>The entry point of your React application. This file is responsible for initializing the React app and rendering the root `App` component into the DOM, typically into a `<div id="root"></div>`.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">package.json</h4>
+                            <p>Contains project metadata, script commands (e.g., `start`, `build`), and lists all project dependencies (`react`, `react-dom`) and devDependencies (`eslint`).</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Mid-size Project Content -->
+            <section id="content-mid" class="content-section hidden">
+                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <aside class="lg:col-span-1 space-y-6">
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">✅ Use Case</h3>
+                            <ul class="list-disc list-inside space-y-2 text-gray-700 bg-white p-4 rounded-lg border border-gray-200">
+                                <li>Apps with moderate complexity</li>
+                                <li>Multiple routes with varying layouts</li>
+                                <li>API-driven applications</li>
+                                <li>Small to medium-sized teams</li>
+                                <li>Scalable MVPs</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">📂 Structure</h3>
+                            <div class="file-tree">
+                                <span class="folder">public/</span>
+                                <span class="folder">src/</span>
+                                <span class="file folder">assets/</span>
+                                <span class="file folder">components/</span>
+                                <span class="file folder">contexts/</span>
+                                <span class="file folder">hooks/</span>
+                                <span class="file folder">layouts/</span>
+                                <span class="file folder">pages/</span>
+                                <span class="file folder">services/</span>
+                                <span class="file folder">utils/</span>
+                                <span class="file">📄 App.js</span>
+                                <span class="file">📄 index.js</span>
+                                <span class="folder">package.json</span>
+                            </div>
+                        </div>
+                    </aside>
+                    <div class="lg:col-span-2 space-y-8">
+                        <h3 class="text-3xl font-bold text-gray-800">📝 Detailed Explanation</h3>
+                        <div>
+                            <h4 class="text-xl mb-2">src/layouts/</h4>
+                            <p>Introduces layout components (`MainLayout`, `AuthLayout`) that provide consistent UI scaffolding for different sections of your app, wrapping around page components.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">src/services/</h4>
+                            <p>Centralizes all logic for interacting with external APIs. This separates data fetching concerns from UI, making components cleaner and API logic reusable and testable.</p>
+                             <pre><code>// src/services/userService.js
+import axios from 'axios';
+const API_URL = process.env.REACT_APP_API_URL;
+
+const apiClient = axios.create({ baseURL: API_URL });
+
+export const login = async (credentials) => {
+  const response = await apiClient.post('/auth/login', credentials);
+  return response.data;
+};</code></pre>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">src/hooks/</h4>
+                            <p>Stores custom React Hooks (`useAuth`, `useDebounce`) which are reusable pieces of stateful logic that can be shared across multiple components, promoting code reuse and simplifying components.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">src/contexts/</h4>
+                            <p>Contains React Context Providers for managing global state (`AuthContext`, `ThemeContext`) that needs to be accessible by many components without "prop drilling".</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">src/utils/</h4>
+                            <p>Houses pure utility functions (`formatters`, `validators`) that are not specific to React. These are general-purpose helpers that can be used anywhere in the application.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Large Project Content -->
+            <section id="content-large" class="content-section hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <aside class="lg:col-span-1 space-y-6">
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">✅ Use Case</h3>
+                            <ul class="list-disc list-inside space-y-2 text-gray-700 bg-white p-4 rounded-lg border border-gray-200">
+                                <li>Large applications with many features</li>
+                                <li>Enterprise-level applications</li>
+                                <li>Large, collaborative development teams</li>
+                                <li>Highly scalable architectures</li>
+                                <li>Projects requiring strong typing (TS)</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-3">📂 Structure</h3>
+                            <div class="file-tree">
+                                <span class="folder">public/</span>
+                                <span class="folder">src/</span>
+                                <span class="file folder">assets/</span>
+                                <span class="file folder">components/</span>
+                                <span class="file folder">contexts/</span>
+                                <span class="file folder">features/</span>
+                                <span class="file" style="margin-left: 3rem;">└── [feature]/</span>
+                                <span class="file folder">hooks/</span>
+                                <span class="file folder">layouts/</span>
+                                <span class="file folder">pages/</span>
+                                <span class="file folder">services/</span>
+                                <span class="file folder">store/</span>
+                                <span class="file folder">types/</span>
+                                <span class="file folder">utils/</span>
+                                <span class="file">📄 App.js</span>
+                                <span class="file">📄 index.js</span>
+                                <span class="folder">package.json</span>
+                            </div>
+                        </div>
+                    </aside>
+                    <div class="lg:col-span-2 space-y-8">
+                        <h3 class="text-3xl font-bold text-gray-800">📝 Detailed Explanation</h3>
+                        <div>
+                            <h4 class="text-xl mb-2">src/features/</h4>
+                            <p>The cornerstone of this architecture. Code is organized by encapsulated business domains (e.g., `auth`, `cart`, `profile`). Each feature folder is a self-contained module with its own components, hooks, services, and state, promoting high cohesion and loose coupling.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">src/store/</h4>
+                            <p>Dedicated to centralized state management using a robust library like Redux Toolkit, Zustand, or Recoil. This is crucial for managing complex application state predictably and enables powerful debugging tools.</p>
+                            <pre><code>// src/store/index.js (using Redux Toolkit)
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from '../features/auth/store/authSlice';
+
+const store = configureStore({
+  reducer: {
+    auth: authReducer,
+    // ...other feature reducers
+  },
+});
+
+export default store;</code></pre>
+                        </div>
+                         <div>
+                            <h4 class="text-xl mb-2">src/types/</h4>
+                            <p>When using TypeScript, this directory is dedicated to defining global types and interfaces (`User`, `Product`). This provides strong typing across the application, improving code quality, developer experience, and refactoring safety.</p>
+                        </div>
+                        <div>
+                            <h4 class="text-xl mb-2">Global vs. Feature-Specific</h4>
+                            <p>In this model, directories like `components`, `hooks`, and `services` at the root level are for truly global, shared logic. Logic specific to one feature should live inside its `features/[featureName]/` directory to maintain encapsulation.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- General Best Practices Section -->
+            <section class="mt-20 pt-12 border-t border-gray-200">
+                <h2 class="text-4xl font-bold text-gray-800 text-center mb-10">General Best Practices</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div class="bg-white p-6 rounded-lg border border-gray-200">
+                        <h4 class="text-xl font-semibold mb-2">1. Code Formatting & Linting</h4>
+                        <p>Use tools like ESLint and Prettier to enforce consistent code style and catch potential errors early. Integrate them into your workflow with commit hooks.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg border border-gray-200">
+                        <h4 class="text-xl font-semibold mb-2">2. Naming Conventions</h4>
+                        <p>Adopt consistent naming: `PascalCase` for components, `camelCase` for folders and functions, and `use` prefix for hooks. Clarity is key.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg border border-gray-200">
+                        <h4 class="text-xl font-semibold mb-2">3. Import Aliases</h4>
+                        <p>Configure absolute imports (e.g., `@/components`) to avoid messy relative paths like `../../components`. This improves readability and simplifies refactoring.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg border border-gray-200">
+                        <h4 class="text-xl font-semibold mb-2">4. Testing Strategy</h4>
+                        <p>Implement a balanced testing strategy: unit tests for utilities and hooks, integration tests for component interactions, and end-to-end tests for critical user flows.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg border border-gray-200">
+                        <h4 class="text-xl font-semibold mb-2">5. Performance Optimization</h4>
+                        <p>Use `React.memo`, `useMemo`, and `useCallback` to prevent unnecessary re-renders. Employ code-splitting with `React.lazy` and `Suspense` to reduce initial bundle sizes.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg border border-gray-200">
+                        <h4 class="text-xl font-semibold mb-2">6. Accessibility (A11y)</h4>
+                        <p>Design and develop with accessibility in mind from the start. Use semantic HTML, manage focus, and ensure keyboard navigability for all interactive elements.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for LLM Responses -->
+    <div id="llm-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button id="close-modal-btn" class="close-modal-btn">&times;</button>
+            <h3 id="modal-title" class="text-2xl font-bold text-gray-800 mb-4"></h3>
+            <div id="modal-body" class="text-gray-700">
+                <div id="modal-loading" class="flex justify-center items-center py-8 hidden">
+                    <div class="loading-spinner"></div>
+                    <span class="ml-3 text-lg">Generating...</span>
+                </div>
+                <p id="modal-text"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const navButtons = document.querySelectorAll('.nav-button');
+            const contentSections = document.querySelectorAll('.content-section');
+            const projectDescriptionInput = document.getElementById('project-description-input');
+            const recommendStructureBtn = document.getElementById('recommend-structure-btn');
+            const recommendationOutput = document.getElementById('recommendation-output');
+            const llmModalOverlay = document.getElementById('llm-modal-overlay');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            const modalLoading = document.getElementById('modal-loading');
+            const modalText = document.getElementById('modal-text');
+
+            const API_KEY = ""; // Canvas will provide this at runtime
+
+            // Utility to show/hide modal
+            const showModal = (title, content, isLoading = false) => {
+                modalTitle.textContent = title;
+                modalText.textContent = content;
+                if (isLoading) {
+                    modalLoading.classList.remove('hidden');
+                    modalText.classList.add('hidden');
+                } else {
+                    modalLoading.classList.add('hidden');
+                    modalText.classList.remove('hidden');
+                }
+                llmModalOverlay.classList.remove('hidden');
+            };
+
+            const hideModal = () => {
+                llmModalOverlay.classList.add('hidden');
+                modalText.textContent = '';
+                modalLoading.classList.add('hidden');
+            };
+
+            closeModalBtn.addEventListener('click', hideModal);
+            llmModalOverlay.addEventListener('click', (e) => {
+                if (e.target === llmModalOverlay) {
+                    hideModal();
+                }
+            });
+
+            // Exponential backoff for API calls
+            const callGeminiApi = async (payload, retries = 0) => {
+                const MAX_RETRIES = 5;
+                const BASE_DELAY_MS = 1000; // 1 second
+
+                try {
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429 && retries < MAX_RETRIES) {
+                            const delay = BASE_DELAY_MS * Math.pow(2, retries) + Math.random() * 1000;
+                            await new Promise(res => setTimeout(res, delay));
+                            return callGeminiApi(payload, retries + 1);
+                        }
+                        throw new Error(`API error: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        throw new Error('Unexpected API response structure or no content.');
+                    }
+                } catch (error) {
+                    console.error('Gemini API call failed:', error);
+                    return 'Failed to get a response from the AI. Please try again.';
+                }
+            };
+
+            // Project Structure Recommender Logic
+            recommendStructureBtn.addEventListener('click', async () => {
+                const description = projectDescriptionInput.value.trim();
+                if (!description) {
+                    recommendationOutput.textContent = 'Please enter a project description.';
+                    recommendationOutput.classList.remove('hidden');
+                    return;
+                }
+
+                recommendationOutput.classList.remove('hidden');
+                recommendationOutput.innerHTML = '<div class="loading-spinner mx-auto"></div> <p class="text-center mt-2">Generating recommendation...</p>';
+
+                const prompt = `Given the following project description, recommend the most suitable React project structure (Small, Mid-size, or Large) from the provided documentation. Explain your choice concisely, referring to the characteristics of each structure.
+                
+                Project Description: "${description}"
+                
+                Small Project Use Case: Prototypes, small apps with limited routes and functionality.
+                Mid-size Project Use Case: Apps with moderate complexity, multiple routes, API calls, state sharing.
+                Large Project Use Case: Large applications, enterprise apps, team collaboration, scalable architecture.`;
+
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                const responseText = await callGeminiApi(payload);
+                
+                recommendationOutput.textContent = responseText;
+            });
+
+            // Navigation Logic
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.dataset.target;
+
+                    navButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    button.classList.add('active');
+
+                    contentSections.forEach(section => {
+                        if (section.id === `content-${targetId}`) {
+                            section.classList.remove('hidden');
+                        } else {
+                            section.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+
+            // Add copy-to-clipboard and explain-code functionality to all <pre> blocks
+            const allPreBlocks = document.querySelectorAll('pre');
+            allPreBlocks.forEach(pre => {
+                const code = pre.querySelector('code');
+                if (code) {
+                    // Copy button
+                    const copyButton = document.createElement('button');
+                    copyButton.textContent = 'Copy';
+                    copyButton.className = 'copy-btn';
+                    copyButton.addEventListener('click', () => {
+                        const textArea = document.createElement('textarea');
+                        textArea.value = code.innerText;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        try {
+                            document.execCommand('copy');
+                            copyButton.textContent = 'Copied!';
+                        } catch (err) {
+                            console.error('Failed to copy text: ', err);
+                            copyButton.textContent = 'Failed!';
+                        }
+                        document.body.removeChild(textArea);
+                        setTimeout(() => { copyButton.textContent = 'Copy'; }, 2000);
+                    });
+                    pre.appendChild(copyButton);
+
+                    // Explain Code button
+                    const explainButton = document.createElement('button');
+                    explainButton.innerHTML = '✨ Explain';
+                    explainButton.className = 'explain-btn';
+                    explainButton.addEventListener('click', async () => {
+                        const codeSnippet = code.innerText;
+                        showModal('Code Explanation', '', true); // Show loading spinner
+
+                        const prompt = `Explain the following JavaScript/JSX code snippet in detail, including its purpose, how it works, and common patterns or considerations related to React development. Keep the explanation clear and concise.
+
+                        Code Snippet:
+                        \`\`\`
+                        ${codeSnippet}
+                        \`\`\``;
+
+                        const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                        const responseText = await callGeminiApi(payload);
+                        
+                        showModal('Code Explanation', responseText, false); // Show response
+                    });
+                    pre.appendChild(explainButton);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
